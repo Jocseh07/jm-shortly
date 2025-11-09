@@ -65,17 +65,21 @@ export function Header() {
             </Button>
           </SignedOut>
         </div>
-        <Button
-          size="icon"
-          variant="outline"
-          onClick={() => setOpen(!open)}
-          className="md:hidden"
-          aria-expanded={open}
-          aria-controls="mobile-menu"
-          aria-label="Toggle menu"
-        >
-          <MenuToggleIcon open={open} className="size-5" duration={300} />
-        </Button>
+        <div className="flex items-center gap-2 md:hidden">
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            aria-label="Toggle menu"
+          >
+            <MenuToggleIcon open={open} className="size-5" duration={300} />
+          </Button>
+        </div>
       </nav>
       <MobileMenu open={open} className="flex flex-col justify-between gap-2">
         <div className="grid gap-y-2">

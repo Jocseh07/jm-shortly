@@ -90,9 +90,12 @@ Edit `.env.local` with your values:
 TURSO_DATABASE_URL=libsql://your-database.turso.io
 TURSO_AUTH_TOKEN=your-auth-token-here
 
-# App URL (for generating short URLs)
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
+CLERK_SECRET_KEY=your-clerk-secret-key
 ```
+
+**Note:** The app automatically detects the base URL from request headers, so you don't need to set `NEXT_PUBLIC_APP_URL`. This works seamlessly in both development and production.
 
 **Getting Turso Credentials:**
 
@@ -329,9 +332,12 @@ Opens at [https://local.drizzle.studio](https://local.drizzle.studio)
 TURSO_DATABASE_URL=libsql://your-db.turso.io
 TURSO_AUTH_TOKEN=eyJhbGc...
 
-# App URL
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
 ```
+
+**Note:** The base URL for short links is automatically detected from request headers.
 
 ### Validation
 
@@ -574,7 +580,10 @@ describe('isValidShortCode', () => {
    - Add:
      - `TURSO_DATABASE_URL`
      - `TURSO_AUTH_TOKEN`
-     - `NEXT_PUBLIC_APP_URL=https://your-app.vercel.app`
+     - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+     - `CLERK_SECRET_KEY`
+
+   **Note:** No need to set `NEXT_PUBLIC_APP_URL` - the app automatically uses the deployment URL.
 
 4. **Deploy**
    - Vercel automatically deploys on push to `main`

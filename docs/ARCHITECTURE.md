@@ -542,8 +542,11 @@ Required for deployment:
 ```bash
 TURSO_DATABASE_URL=libsql://your-db.turso.io
 TURSO_AUTH_TOKEN=your-token-here
-NEXT_PUBLIC_APP_URL=https://shortly.app
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
+CLERK_SECRET_KEY=sk_live_...
 ```
+
+**Note:** The application automatically detects the base URL from request headers (using `x-forwarded-proto` and `host` headers), so you don't need to configure `NEXT_PUBLIC_APP_URL`. This ensures short links work correctly across all environments (development, staging, production) without manual configuration.
 
 ---
 

@@ -5,7 +5,14 @@ import { cn } from "@/lib/utils";
 import { MenuToggleIcon } from "@/components/ui/menu-toggle-icon";
 import { useScroll } from "@/components/ui/use-scroll";
 import { createPortal } from "react-dom";
-import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+  useUser,
+} from "@clerk/nextjs";
 import { Logo } from "./logo";
 import { publicNavigation, authenticatedNavigation } from "@/data/navigation";
 
@@ -46,18 +53,17 @@ export function Header() {
               {link.label}
             </a>
           ))}
-          {isSignedIn ? (
+          <SignedIn>
             <UserButton afterSignOutUrl="/" />
-          ) : (
-            <>
-              <Button variant="outline" asChild>
-                <SignInButton mode="modal">Sign In</SignInButton>
-              </Button>
-              <Button asChild>
-                <SignUpButton>Get Started</SignUpButton>
-              </Button>
-            </>
-          )}
+          </SignedIn>
+          <SignedOut>
+            <Button variant="outline" asChild>
+              <SignInButton mode="modal">Sign In</SignInButton>
+            </Button>
+            <Button asChild>
+              <SignUpButton>Get Started</SignUpButton>
+            </Button>
+          </SignedOut>
         </div>
         <Button
           size="icon"
@@ -87,24 +93,17 @@ export function Header() {
           ))}
         </div>
         <div className="flex flex-col gap-2">
-          {isSignedIn ? (
-            <div className="flex justify-center">
-              <UserButton afterSignOutUrl="/" />
-            </div>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                className="w-full bg-transparent"
-                asChild
-              >
-                <SignInButton mode="modal">Sign In</SignInButton>
-              </Button>
-              <Button className="w-full" asChild>
-                <SignUpButton>Get Started</SignUpButton>
-              </Button>
-            </>
-          )}
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+          <SignedOut>
+            <Button variant="outline" asChild>
+              <SignInButton mode="modal">Sign In</SignInButton>
+            </Button>
+            <Button asChild>
+              <SignUpButton>Get Started</SignUpButton>
+            </Button>
+          </SignedOut>
         </div>
       </MobileMenu>
     </header>

@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { config } from "dotenv";
+
+config({ path: ".env" });
 
 const envSchema = z.object({
   TURSO_DATABASE_URL: z.url(),

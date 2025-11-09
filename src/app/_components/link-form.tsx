@@ -206,7 +206,7 @@ export function LinkForm({
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
-                      <SelectTrigger id="link-form-expiry">
+                      <SelectTrigger id="link-form-expiry" className="w-full">
                         <SelectValue placeholder="Select expiration" />
                       </SelectTrigger>
                       <SelectContent>

@@ -4,10 +4,10 @@ export type NavigationLink = {
 };
 
 export const publicNavigation: NavigationLink[] = [
-  {
-    label: "Features",
-    href: "#",
-  },
+  // {
+  //   label: "Features",
+  //   href: "#",
+  // },
 ];
 
 export const authenticatedNavigation: NavigationLink[] = [

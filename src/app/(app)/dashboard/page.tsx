@@ -2,15 +2,23 @@ import { getUserLinks } from "@/actions/links";
 import { getDashboardStats } from "@/actions/analytics";
 import { LinkTable } from "./_components/link-table";
 import { StatsCards } from "./_components/stats-cards";
+import { SearchInput } from "./_components/search-input";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+interface DashboardPageProps {
+  searchParams: Promise<{ search?: string }>;
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const params = await searchParams;
+  const searchQuery = params.search;
+
   const [links, stats] = await Promise.all([
-    getUserLinks(),
+    getUserLinks(searchQuery),
     getDashboardStats(),
   ]);
 
@@ -32,6 +40,20 @@ export default async function DashboardPage() {
       </div>
 
       <StatsCards stats={stats} />
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <SearchInput />
+      </div>
+
+      {searchQuery && (
+        <div className="text-sm text-muted-foreground">
+          {links.length === 0 ? (
+            <>No results found for &quot;{searchQuery}&quot;</>
+          ) : (
+            <>Showing {links.length} result{links.length !== 1 ? "s" : ""} for &quot;{searchQuery}&quot;</>
+          )}
+        </div>
+      )}
 
       <LinkTable links={links} />
     </div>

@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { links } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, or, like, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getThrowUser } from "./getThrowUser";
 import { createLinkSchema, linkIdSchema, aliasSchema, updateLinkSchema } from "@/lib/validations";
@@ -116,12 +116,29 @@ export async function createLink(
   }
 }
 
-export async function getUserLinks() {
+export async function getUserLinks(searchQuery?: string) {
   try {
     const userId = await getThrowUser();
 
+    // Build where clause
+    const baseCondition = eq(links.userId, userId);
+    
+    let whereCondition;
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const searchTerm = `%${searchQuery.trim()}%`;
+      whereCondition = and(
+        baseCondition,
+        or(
+          like(links.shortCode, searchTerm),
+          like(links.originalUrl, searchTerm)
+        )
+      );
+    } else {
+      whereCondition = baseCondition;
+    }
+
     const userLinks = await db.query.links.findMany({
-      where: eq(links.userId, userId),
+      where: whereCondition,
       orderBy: desc(links.createdAt),
     });
 

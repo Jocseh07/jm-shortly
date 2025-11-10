@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -15,7 +15,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
-import { CheckCircle2, Copy, ExternalLink } from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, Loader2, X } from "lucide-react";
 import { createLinkSchema } from "@/lib/validations";
 import {
   Select,
@@ -24,6 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { checkAliasAvailability } from "@/actions/links";
+import { useDebounce } from "@uidotdev/usehooks";
 
 type CreateLinkResult =
   | { success: true; shortCode: string; shortUrl: string }
@@ -41,6 +43,11 @@ export function LinkForm({
   const [result, setResult] = useState<CreateLinkResult>(null);
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aliasAvailability, setAliasAvailability] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    error: string | null;
+  }>({ checking: false, available: null, error: null });
 
   const form = useForm<z.output<typeof createLinkSchema>>({
     resolver: zodResolver(createLinkSchema),
@@ -50,6 +57,34 @@ export function LinkForm({
       expiryDuration: "never",
     },
   });
+
+  const customAlias = form.watch("customAlias");
+  const debouncedAlias = useDebounce(customAlias, 500);
+
+  useEffect(() => {
+    if (!debouncedAlias || debouncedAlias.length < 4) {
+      setAliasAvailability({ checking: false, available: null, error: null });
+      return;
+    }
+
+    setAliasAvailability({ checking: true, available: null, error: null });
+
+    checkAliasAvailability(debouncedAlias)
+      .then((result) => {
+        setAliasAvailability({
+          checking: false,
+          available: result.available,
+          error: result.error || null,
+        });
+      })
+      .catch(() => {
+        setAliasAvailability({
+          checking: false,
+          available: null,
+          error: "Failed to check availability",
+        });
+      });
+  }, [debouncedAlias]);
 
   async function onSubmit(data: z.output<typeof createLinkSchema>) {
     setIsSubmitting(true);
@@ -170,14 +205,54 @@ export function LinkForm({
                     </span>
                   </FieldLabel>
                   <FieldContent>
-                    <Input
-                      {...field}
-                      id="link-form-alias"
-                      type="text"
-                      placeholder="my-custom-link"
-                      aria-invalid={fieldState.invalid}
-                      autoComplete="off"
-                    />
+                    <div className="relative">
+                      <Input
+                        {...field}
+                        id="link-form-alias"
+                        type="text"
+                        placeholder="my-custom-link"
+                        aria-invalid={fieldState.invalid}
+                        autoComplete="off"
+                        className="pr-10"
+                      />
+                      {customAlias && customAlias.length >= 4 && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {aliasAvailability.checking ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          ) : aliasAvailability.available ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : aliasAvailability.available === false ? (
+                            <X className="h-4 w-4 text-destructive" />
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    {customAlias && customAlias.length >= 4 && (
+                      <div className="text-sm">
+                        {aliasAvailability.checking && (
+                          <span className="text-muted-foreground">
+                            Checking availability...
+                          </span>
+                        )}
+                        {!aliasAvailability.checking &&
+                          aliasAvailability.available && (
+                            <span className="text-green-600">
+                              ✓ Available
+                            </span>
+                          )}
+                        {!aliasAvailability.checking &&
+                          aliasAvailability.available === false && (
+                            <span className="text-destructive">
+                              ✗ Already taken
+                            </span>
+                          )}
+                        {aliasAvailability.error && (
+                          <span className="text-destructive">
+                            {aliasAvailability.error}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <FieldDescription>
                       4-20 characters: letters, numbers, hyphens, and
                       underscores only

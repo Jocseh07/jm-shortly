@@ -183,3 +183,83 @@ export async function getDashboardStats() {
     throw error;
   }
 }
+
+export async function getAnalyticsForExport(
+  linkId: string
+): Promise<
+  | {
+      success: true;
+      data: Array<{
+        timestamp: string;
+        date: string;
+        time: string;
+        referer: string;
+        deviceType: string;
+        ipAddress: string;
+        userAgent: string;
+        country: string;
+        city: string;
+      }>;
+      linkInfo: {
+        shortCode: string;
+        originalUrl: string;
+      };
+    }
+  | { success: false; error: string }
+> {
+  try {
+    const userId = await getThrowUser();
+
+    const validationResult = linkIdSchema.safeParse(linkId);
+    if (!validationResult.success) {
+      return { success: false, error: "Invalid link ID" };
+    }
+
+    const link = await db.query.links.findFirst({
+      where: eq(links.id, linkId),
+    });
+
+    if (!link) {
+      return { success: false, error: "Link not found" };
+    }
+
+    if (link.userId !== userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const allClicks = await db.query.clicks.findMany({
+      where: eq(clicks.linkId, linkId),
+      orderBy: (clicks, { desc }) => desc(clicks.timestamp),
+    });
+
+    const exportData = allClicks.map((click) => {
+      const timestamp = click.timestamp ? new Date(click.timestamp) : new Date();
+      return {
+        timestamp: timestamp.toISOString(),
+        date: timestamp.toLocaleDateString(),
+        time: timestamp.toLocaleTimeString(),
+        referer: click.referer || "direct",
+        deviceType: click.deviceType || "unknown",
+        ipAddress: click.ipAddress || "",
+        userAgent: click.userAgent || "",
+        country: click.country || "",
+        city: click.city || "",
+      };
+    });
+
+    return {
+      success: true,
+      data: exportData,
+      linkInfo: {
+        shortCode: link.shortCode,
+        originalUrl: link.originalUrl,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching analytics for export:", error);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return { success: false, error: "You must be signed in" };
+    }
+    return { success: false, error: "Failed to export analytics" };
+  }
+}

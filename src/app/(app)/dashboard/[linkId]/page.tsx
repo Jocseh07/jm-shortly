@@ -5,6 +5,7 @@ import { ReferrersTable } from "../_components/referrers-table";
 import { DeviceBreakdown } from "../_components/device-breakdown";
 import { RecentClicks } from "../_components/recent-clicks";
 import { CopyButton } from "../_components/copy-button";
+import { ExportButton } from "../_components/export-button";
 import { LinkStatusToggle } from "./_components/link-status-toggle";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink } from "lucide-react";
@@ -79,6 +80,7 @@ export default async function AnalyticsPage({
               Open
             </a>
           </Button>
+          <ExportButton linkId={analytics.link.id} shortCode={analytics.link.shortCode} />
         </div>
       </header>
 

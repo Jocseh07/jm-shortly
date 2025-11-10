@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -17,15 +18,9 @@ import {
 } from "@/components/ui/field";
 import { CheckCircle2, Copy, ExternalLink, Loader2, X } from "lucide-react";
 import { createLinkSchema } from "@/lib/validations";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { checkAliasAvailability } from "@/actions/links";
 import { useDebounce } from "@uidotdev/usehooks";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 type CreateLinkResult =
   | { success: true; shortCode: string; shortUrl: string }
@@ -54,11 +49,15 @@ export function LinkForm({
     defaultValues: {
       originalUrl: "",
       customAlias: "",
-      expiryDuration: "never",
+      expiresAt: "",
+      expirationMessage: "",
+      activateAt: "",
     },
   });
 
   const customAlias = form.watch("customAlias");
+  const expiresAt = form.watch("expiresAt");
+  const expirationMessage = form.watch("expirationMessage");
   const debouncedAlias = useDebounce(customAlias, 500);
 
   useEffect(() => {
@@ -91,7 +90,9 @@ export function LinkForm({
     const formData = new FormData();
     formData.append("originalUrl", data.originalUrl);
     formData.append("customAlias", data.customAlias || "");
-    formData.append("expiryDuration", data.expiryDuration || "never");
+    formData.append("expiresAt", data.expiresAt || "");
+    formData.append("expirationMessage", data.expirationMessage || "");
+    formData.append("activateAt", data.activateAt || "");
 
     const response = await createAction(null, formData);
     setResult(response);
@@ -266,10 +267,10 @@ export function LinkForm({
             />
 
             <Controller
-              name="expiryDuration"
+              name="expiresAt"
               control={form.control}
-              render={({ field }) => (
-                <Field>
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="link-form-expiry">
                     Link Expiration{" "}
                     <span className="text-muted-foreground font-normal">
@@ -277,24 +278,84 @@ export function LinkForm({
                     </span>
                   </FieldLabel>
                   <FieldContent>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <SelectTrigger id="link-form-expiry" className="w-full">
-                        <SelectValue placeholder="Select expiration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1h">1 hour</SelectItem>
-                        <SelectItem value="24h">24 hours</SelectItem>
-                        <SelectItem value="7d">7 days</SelectItem>
-                        <SelectItem value="30d">30 days</SelectItem>
-                        <SelectItem value="never">Never expire</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <DateTimePicker
+                      value={field.value ? new Date(field.value) : undefined}
+                      onChange={(date) => {
+                        field.onChange(date ? date.toISOString() : "");
+                      }}
+                      placeholder="Pick expiration date and time"
+                      disabled={isSubmitting}
+                    />
                     <FieldDescription>
-                      When should this link expire?
+                      When should this link expire? Leave empty for no expiration
                     </FieldDescription>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </FieldContent>
+                </Field>
+              )}
+            />
+
+            {expiresAt && (
+              <Controller
+                name="expirationMessage"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="link-form-expiration-message">
+                      Custom Expiration Message{" "}
+                      <span className="text-muted-foreground font-normal">
+                        (optional)
+                      </span>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Textarea
+                        {...field}
+                        id="link-form-expiration-message"
+                        placeholder="This link has expired. Please contact us for a new link."
+                        aria-invalid={fieldState.invalid}
+                        disabled={isSubmitting}
+                        rows={3}
+                      />
+                      <FieldDescription>
+                        Custom message to show when link expires ({expirationMessage?.length || 0}/200 characters)
+                      </FieldDescription>
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            )}
+
+            <Controller
+              name="activateAt"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor="link-form-activate">
+                    Schedule Activation{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional)
+                    </span>
+                  </FieldLabel>
+                  <FieldContent>
+                    <DateTimePicker
+                      value={field.value ? new Date(field.value) : undefined}
+                      onChange={(date) => {
+                        field.onChange(date ? date.toISOString() : "");
+                      }}
+                      placeholder="Pick activation date and time"
+                      disabled={isSubmitting}
+                    />
+                    <FieldDescription>
+                      Link will not be accessible until this date and time
+                    </FieldDescription>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
                   </FieldContent>
                 </Field>
               )}

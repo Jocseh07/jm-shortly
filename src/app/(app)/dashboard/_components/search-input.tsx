@@ -49,13 +49,13 @@ export function SearchInput() {
   };
 
   return (
-    <div className="relative flex-1 w-full">
+    <div className="relative">
       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         placeholder="Search by short code or URL..."
         value={searchValue}
         onChange={(e) => setSearchValue(e.target.value)}
-        className="pl-9 pr-20 w-full"
+        className="pl-9 pr-20"
       />
       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
         {isPending && (

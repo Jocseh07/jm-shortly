@@ -11,39 +11,18 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { updateLink } from "@/actions/links";
 import { LinkType } from "./columns";
 import { LoadingSwap } from "@/components/ui/loading-swap";
 import { Loader2 } from "lucide-react";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 interface EditLinkDialogProps {
   link: LinkType;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-function getExpiryDuration(expiresAt: Date | null): string {
-  if (!expiresAt) return "never";
-
-  const now = new Date();
-  const expiryDate = new Date(expiresAt);
-  const diffMs = expiryDate.getTime() - now.getTime();
-  const diffHours = diffMs / (1000 * 60 * 60);
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-  if (diffHours <= 1) return "1h";
-  if (diffHours <= 24) return "24h";
-  if (diffDays <= 7) return "7d";
-  if (diffDays <= 30) return "30d";
-  return "never";
 }
 
 export function EditLinkDialog({
@@ -52,11 +31,20 @@ export function EditLinkDialog({
   onOpenChange,
 }: EditLinkDialogProps) {
   const [originalUrl, setOriginalUrl] = useState(link.originalUrl);
-  const [expiryDuration, setExpiryDuration] = useState(
-    getExpiryDuration(link.expiresAt)
+  const [expiresAt, setExpiresAt] = useState<Date | undefined>(
+    link.expiresAt ? new Date(link.expiresAt) : undefined
+  );
+  const [expirationMessage, setExpirationMessage] = useState(
+    link.expirationMessage || ""
+  );
+  const [activateAt, setActivateAt] = useState<Date | undefined>(
+    link.activateAt ? new Date(link.activateAt) : undefined
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  
+  const now = new Date();
+  const isExpired = link.expiresAt && new Date(link.expiresAt) < now;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +53,9 @@ export function EditLinkDialog({
     startTransition(async () => {
       const result = await updateLink(link.id, {
         originalUrl,
-        expiryDuration,
+        expiresAt: expiresAt ? expiresAt.toISOString() : undefined,
+        expirationMessage: expirationMessage || undefined,
+        activateAt: activateAt ? activateAt.toISOString() : undefined,
       });
 
       if (result.success) {
@@ -82,12 +72,18 @@ export function EditLinkDialog({
         <DialogHeader>
           <DialogTitle>Edit Link</DialogTitle>
           <DialogDescription>
-            Update the destination URL or expiration date for this short link.
+            Update the destination URL, expiration date, or activation schedule for this short link.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
+            {isExpired && (
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 rounded-md text-sm">
+                ⚠️ This link has expired on {new Date(link.expiresAt!).toLocaleString()}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="originalUrl">Long URL</Label>
               <Input
@@ -102,23 +98,61 @@ export function EditLinkDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="expiryDuration">Expiration</Label>
-              <Select
-                value={expiryDuration}
-                onValueChange={setExpiryDuration}
+              <Label htmlFor="expiresAt">
+                Expiration Date{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <DateTimePicker
+                value={expiresAt}
+                onChange={setExpiresAt}
+                placeholder="Pick expiration date and time"
                 disabled={isPending}
-              >
-                <SelectTrigger id="expiryDuration" className="w-full">
-                  <SelectValue placeholder="Select expiration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1h">1 hour</SelectItem>
-                  <SelectItem value="24h">24 hours</SelectItem>
-                  <SelectItem value="7d">7 days</SelectItem>
-                  <SelectItem value="30d">30 days</SelectItem>
-                  <SelectItem value="never">Never</SelectItem>
-                </SelectContent>
-              </Select>
+              />
+              <p className="text-sm text-muted-foreground">
+                Link will expire and become inaccessible after this date
+              </p>
+            </div>
+
+            {expiresAt && (
+              <div className="space-y-2">
+                <Label htmlFor="expirationMessage">
+                  Custom Expiration Message{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </Label>
+                <Textarea
+                  id="expirationMessage"
+                  value={expirationMessage}
+                  onChange={(e) => setExpirationMessage(e.target.value)}
+                  placeholder="This link has expired. Please contact us for a new link."
+                  disabled={isPending}
+                  rows={3}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Custom message to show when link expires ({expirationMessage.length}/200 characters)
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="activateAt">
+                Schedule Activation{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <DateTimePicker
+                value={activateAt}
+                onChange={setActivateAt}
+                placeholder="Pick activation date and time"
+                disabled={isPending}
+              />
+              <p className="text-sm text-muted-foreground">
+                Link will not be accessible until this date and time
+              </p>
             </div>
 
             {error && <div className="text-sm text-destructive">{error}</div>}

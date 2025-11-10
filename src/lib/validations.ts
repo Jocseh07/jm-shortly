@@ -12,9 +12,29 @@ export const createLinkSchema = z.object({
     )
     .optional()
     .or(z.literal("")),
-  expiryDuration: z
-    .enum(["1h", "24h", "7d", "30d", "never"])
-    .catch("never"),
+  expiresAt: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const date = new Date(val);
+      return !isNaN(date.getTime()) && date > new Date();
+    }, "Expiration date must be in the future")
+    .or(z.literal("")),
+  expirationMessage: z
+    .string()
+    .max(200, "Message must be at most 200 characters")
+    .optional()
+    .or(z.literal("")),
+  activateAt: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const date = new Date(val);
+      return !isNaN(date.getTime()) && date > new Date();
+    }, "Activation date must be in the future")
+    .or(z.literal("")),
 });
 
 export const linkIdSchema = z.string().uuid("Invalid link ID");
@@ -30,7 +50,27 @@ export const aliasSchema = z
 
 export const updateLinkSchema = z.object({
   originalUrl: z.url("Please enter a valid URL"),
-  expiryDuration: z
-    .enum(["1h", "24h", "7d", "30d", "never"])
-    .catch("never"),
+  expiresAt: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const date = new Date(val);
+      return !isNaN(date.getTime()) && date > new Date();
+    }, "Expiration date must be in the future")
+    .or(z.literal("")),
+  expirationMessage: z
+    .string()
+    .max(200, "Message must be at most 200 characters")
+    .optional()
+    .or(z.literal("")),
+  activateAt: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const date = new Date(val);
+      return !isNaN(date.getTime()) && date > new Date();
+    }, "Activation date must be in the future")
+    .or(z.literal("")),
 });

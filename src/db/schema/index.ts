@@ -12,6 +12,8 @@ export const links = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
     isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
     expiresAt: integer("expires_at", { mode: "timestamp" }),
+    activateAt: integer("activate_at", { mode: "timestamp" }),
+    expirationMessage: text("expiration_message"),
   },
   (table) => ({
     shortCodeIdx: index("short_code_idx").on(table.shortCode),

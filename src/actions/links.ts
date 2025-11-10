@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { links } from "@/db/schema";
-import { eq, desc, or, like, and } from "drizzle-orm";
+import { eq, desc, or, like, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getThrowUser } from "./getThrowUser";
 import { createLinkSchema, linkIdSchema, aliasSchema, updateLinkSchema } from "@/lib/validations";
@@ -10,23 +10,6 @@ import { getBaseUrl } from "@/lib/url";
 
 function generateShortCode(): string {
   return crypto.randomUUID().slice(0, 6).replace(/-/g, "");
-}
-
-function calculateExpiresAt(duration: string): Date | null {
-  if (duration === "never") return null;
-  const now = new Date();
-  switch (duration) {
-    case "1h":
-      return new Date(now.getTime() + 60 * 60 * 1000);
-    case "24h":
-      return new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    case "7d":
-      return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    case "30d":
-      return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    default:
-      return null;
-  }
 }
 
 export async function createLink(
@@ -41,12 +24,16 @@ export async function createLink(
 
     const originalUrl = formData.get("originalUrl") as string;
     const customAlias = formData.get("customAlias") as string;
-    const expiryDuration = formData.get("expiryDuration") as string;
+    const expiresAt = formData.get("expiresAt") as string;
+    const expirationMessage = formData.get("expirationMessage") as string;
+    const activateAt = formData.get("activateAt") as string;
 
     const validationResult = createLinkSchema.safeParse({
       originalUrl,
       customAlias: customAlias || undefined,
-      expiryDuration: expiryDuration || "never",
+      expiresAt: expiresAt || undefined,
+      expirationMessage: expirationMessage || undefined,
+      activateAt: activateAt || undefined,
     });
 
     if (!validationResult.success) {
@@ -59,11 +46,22 @@ export async function createLink(
     const {
       originalUrl: validatedUrl,
       customAlias: validatedAlias,
-      expiryDuration: validatedExpiryDuration,
+      expiresAt: validatedExpiresAt,
+      expirationMessage: validatedExpirationMessage,
+      activateAt: validatedActivateAt,
     } = validationResult.data;
 
     const shortCode = validatedAlias || generateShortCode();
-    const expiresAt = calculateExpiresAt(validatedExpiryDuration || "never");
+    const expiresAtDate = validatedExpiresAt ? new Date(validatedExpiresAt) : null;
+    const activateAtDate = validatedActivateAt ? new Date(validatedActivateAt) : null;
+
+    // Validate that activation date is before expiry date
+    if (activateAtDate && expiresAtDate && activateAtDate >= expiresAtDate) {
+      return {
+        success: false,
+        error: "Activation date must be before expiry date",
+      };
+    }
 
     const existingLink = await db.query.links.findFirst({
       where: eq(links.shortCode, shortCode),
@@ -88,7 +86,9 @@ export async function createLink(
       isActive: true,
       createdAt: now,
       updatedAt: now,
-      expiresAt,
+      expiresAt: expiresAtDate,
+      expirationMessage: validatedExpirationMessage || null,
+      activateAt: activateAtDate,
     });
 
     revalidatePath("/dashboard");
@@ -116,9 +116,18 @@ export async function createLink(
   }
 }
 
-export async function getUserLinks(searchQuery?: string) {
+export async function getUserLinks(params?: {
+  page?: number;
+  pageSize?: number;
+  searchQuery?: string;
+}) {
   try {
     const userId = await getThrowUser();
+
+    const page = params?.page ?? 1;
+    const pageSize = params?.pageSize ?? 50;
+    const searchQuery = params?.searchQuery;
+    const offset = (page - 1) * pageSize;
 
     // Build where clause
     const baseCondition = eq(links.userId, userId);
@@ -137,12 +146,31 @@ export async function getUserLinks(searchQuery?: string) {
       whereCondition = baseCondition;
     }
 
+    // Get total count
+    const [{ totalCount }] = await db
+      .select({ totalCount: count() })
+      .from(links)
+      .where(whereCondition);
+
+    // Get paginated data
     const userLinks = await db.query.links.findMany({
       where: whereCondition,
       orderBy: desc(links.createdAt),
+      limit: pageSize,
+      offset: offset,
     });
 
-    return userLinks;
+    const pageCount = Math.ceil(totalCount / pageSize);
+
+    return {
+      data: userLinks,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        pageCount,
+      },
+    };
   } catch (error) {
     console.error("Error fetching user links:", error);
     throw error;
@@ -251,7 +279,7 @@ export async function checkAliasAvailability(
 
 export async function updateLink(
   linkId: string,
-  data: { originalUrl: string; expiryDuration: string }
+  data: { originalUrl: string; expiresAt?: string; expirationMessage?: string; activateAt?: string }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const userId = await getThrowUser();
@@ -269,7 +297,7 @@ export async function updateLink(
       };
     }
 
-    const { originalUrl, expiryDuration } = validationResult.data;
+    const { originalUrl, expiresAt, expirationMessage, activateAt } = validationResult.data;
 
     const link = await db.query.links.findFirst({
       where: eq(links.id, linkId),
@@ -283,13 +311,24 @@ export async function updateLink(
       return { success: false, error: "Unauthorized" };
     }
 
-    const expiresAt = calculateExpiresAt(expiryDuration);
+    const expiresAtDate = expiresAt ? new Date(expiresAt) : null;
+    const activateAtDate = activateAt ? new Date(activateAt) : null;
+
+    // Validate that activation date is before expiry date
+    if (activateAtDate && expiresAtDate && activateAtDate >= expiresAtDate) {
+      return {
+        success: false,
+        error: "Activation date must be before expiry date",
+      };
+    }
 
     await db
       .update(links)
       .set({
         originalUrl,
-        expiresAt,
+        expiresAt: expiresAtDate,
+        expirationMessage: expirationMessage || null,
+        activateAt: activateAtDate,
         updatedAt: new Date(),
       })
       .where(eq(links.id, linkId));

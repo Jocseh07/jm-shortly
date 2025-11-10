@@ -48,13 +48,38 @@ function StatusCell({
   row: { original: LinkType };
   onToggleStatus: (linkId: string) => Promise<void>;
 }) {
-  const isActive = row.original.isActive;
+  const { isActive, expiresAt, activateAt } = row.original;
   const [isToggling, setIsToggling] = useState(false);
+  
+  const now = new Date();
+  const isScheduled = activateAt && new Date(activateAt) > now;
+  const isExpired = expiresAt && new Date(expiresAt) < now;
+  
+  let statusBadge;
+  if (!isActive) {
+    statusBadge = <Badge variant="destructive">Inactive</Badge>;
+  } else if (isExpired) {
+    statusBadge = <Badge variant="secondary">Expired</Badge>;
+  } else if (isScheduled) {
+    statusBadge = (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="outline" className="cursor-help">
+            Scheduled
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          Activates: {new Date(activateAt).toLocaleString()}
+        </TooltipContent>
+      </Tooltip>
+    );
+  } else {
+    statusBadge = <Badge variant="default">Active</Badge>;
+  }
+  
   return (
     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-      <Badge variant={isActive ? "default" : "destructive"}>
-        {isActive ? "Active" : "Inactive"}
-      </Badge>
+      {statusBadge}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -205,6 +230,8 @@ export type LinkType = {
   isActive: boolean;
   createdAt: Date | null;
   expiresAt: Date | null;
+  expirationMessage: string | null;
+  activateAt: Date | null;
 };
 
 interface ColumnsConfig {
@@ -272,6 +299,51 @@ export const createColumns = ({
       return date
         ? formatDistanceToNow(new Date(date), { addSuffix: true })
         : "Unknown";
+    },
+  },
+  {
+    accessorKey: "activateAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Activates At" />
+    ),
+    cell: ({ row }) => {
+      const date = row.original.activateAt;
+      if (!date) return <span className="text-muted-foreground">-</span>;
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help">
+              {formatDistanceToNow(new Date(date), { addSuffix: true })}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {new Date(date).toLocaleString()}
+          </TooltipContent>
+        </Tooltip>
+      );
+    },
+  },
+  {
+    accessorKey: "expiresAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Expires At" />
+    ),
+    cell: ({ row }) => {
+      const date = row.original.expiresAt;
+      if (!date) return <span className="text-muted-foreground">-</span>;
+      const isExpired = new Date(date) < new Date();
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className={`cursor-help ${isExpired ? "text-destructive" : ""}`}>
+              {formatDistanceToNow(new Date(date), { addSuffix: true })}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {new Date(date).toLocaleString()}
+          </TooltipContent>
+        </Tooltip>
+      );
     },
   },
   {

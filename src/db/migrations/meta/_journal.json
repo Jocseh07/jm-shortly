@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1762785935491,
+      "tag": "0000_worried_nebula",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1762786131566,
+      "tag": "0001_broad_gabe_jones",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1762787167545,
+      "tag": "0002_magical_hedge_knight",
+      "breakpoints": true
+    }
+  ]
+}

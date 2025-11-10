@@ -50,12 +50,32 @@ export default async function RedirectPage({
     );
   }
 
+  if (link.activateAt && link.activateAt > new Date()) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h1 className="text-4xl font-bold mb-4">Link Scheduled</h1>
+        <p className="text-muted-foreground mb-2">
+          This link is scheduled to activate on:
+        </p>
+        <p className="text-lg font-semibold mb-8">
+          {link.activateAt.toLocaleString()}
+        </p>
+        <Link
+          href="/"
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          Go to Homepage
+        </Link>
+      </div>
+    );
+  }
+
   if (link.expiresAt && link.expiresAt < new Date()) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <h1 className="text-4xl font-bold mb-4">Link Expired</h1>
         <p className="text-muted-foreground mb-8">
-          This link has expired and is no longer available.
+          {link.expirationMessage || "This link has expired and is no longer available."}
         </p>
         <Link
           href="/"

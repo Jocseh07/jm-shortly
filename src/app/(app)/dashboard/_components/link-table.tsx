@@ -5,16 +5,31 @@ import { Button } from "@/components/ui/button";
 import { Link2 } from "lucide-react";
 import { useTransition, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { DataTable } from "./data-table";
 import { createColumns, LinkType } from "./columns";
 import { EditLinkDialog } from "./edit-link-dialog";
+import { SearchInput } from "./search-input";
+import { DataTableViewOptions } from "./data-table-view-options";
 
-export function LinkTable({ links }: { links: LinkType[] }) {
+interface LinkTableProps {
+  links: LinkType[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    pageCount: number;
+  };
+  searchQuery?: string;
+}
+
+export function LinkTable({ links, pagination, searchQuery }: LinkTableProps) {
   const [, startTransition] = useTransition();
   const [copied, setCopied] = useState<string | null>(null);
   const [editingLink, setEditingLink] = useState<LinkType | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const handleDelete = async (linkId: string) => {
     startTransition(async () => {
@@ -45,6 +60,28 @@ export function LinkTable({ links }: { links: LinkType[] }) {
     } catch (error) {
       console.error("Failed to copy:", error);
     }
+  };
+
+  const handlePaginationChange = (newPage: number, newPageSize: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (searchQuery) {
+      params.set('search', searchQuery);
+    }
+    
+    if (newPageSize !== 50) {
+      params.set('pageSize', newPageSize.toString());
+    } else {
+      params.delete('pageSize');
+    }
+    
+    if (newPage > 1) {
+      params.set('page', newPage.toString());
+    } else {
+      params.delete('page');
+    }
+    
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   if (links.length === 0) {
@@ -80,7 +117,35 @@ export function LinkTable({ links }: { links: LinkType[] }) {
 
   return (
     <>
-      <DataTable columns={columns} data={links} onRowClick={handleRowClick} />
+      <DataTable 
+        columns={columns} 
+        data={links} 
+        onRowClick={handleRowClick}
+        serverPagination={{
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          totalCount: pagination.totalCount,
+          pageCount: pagination.pageCount,
+          onPaginationChange: handlePaginationChange,
+        }}
+        renderControls={(table) => (
+          <div className="flex items-center justify-between gap-4">
+            <div className="max-w-2xl flex-1">
+              <SearchInput />
+            </div>
+            {searchQuery && (
+              <div className="text-sm text-muted-foreground hidden sm:block">
+                {pagination.totalCount === 0 ? (
+                  <>No results found</>
+                ) : (
+                  <>{pagination.totalCount} result{pagination.totalCount !== 1 ? "s" : ""}</>
+                )}
+              </div>
+            )}
+            <DataTableViewOptions table={table} />
+          </div>
+        )}
+      />
       {editingLink && (
         <EditLinkDialog
           link={editingLink}

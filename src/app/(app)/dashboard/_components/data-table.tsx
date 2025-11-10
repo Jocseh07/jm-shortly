@@ -21,18 +21,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination } from "./data-table-pagination";
-import { DataTableViewOptions } from "./data-table-view-options";
+import { useLocalStorage } from "@uidotdev/usehooks";
+
+interface ServerPagination {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  pageCount: number;
+  onPaginationChange: (page: number, pageSize: number) => void;
+}
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   onRowClick?: (row: TData) => void;
+  renderControls?: (table: ReturnType<typeof useReactTable<TData>>) => React.ReactNode;
+  serverPagination?: ServerPagination;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   onRowClick,
+  renderControls,
+  serverPagination,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -41,22 +53,15 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   
-  // Persistent page size with localStorage (SSR-safe)
-  const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 50,
-  });
+  // Use useLocalStorage for persistent page size
+  const [pageSize, setPageSize] = useLocalStorage("dashboard-page-size", 50);
 
-  // Load page size from localStorage on mount (client-side only)
+  // Sync page size with server when it changes
   React.useEffect(() => {
-    const savedPageSize = localStorage.getItem("dashboard-page-size");
-    if (savedPageSize) {
-      const pageSize = parseInt(savedPageSize, 10);
-      if (!isNaN(pageSize)) {
-        setPagination((prev) => ({ ...prev, pageSize }));
-      }
+    if (serverPagination && pageSize !== serverPagination.pageSize) {
+      serverPagination.onPaginationChange(1, pageSize);
     }
-  }, []);
+  }, [pageSize, serverPagination]);
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -65,34 +70,51 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: serverPagination ? undefined : getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
+    manualPagination: !!serverPagination,
+    pageCount: serverPagination?.pageCount ?? -1,
     onPaginationChange: (updater) => {
-      setPagination((prev) => {
-        const newState = typeof updater === "function" ? updater(prev) : updater;
-        
-        // Save page size to localStorage when it changes
-        if (newState.pageSize !== prev.pageSize) {
-          localStorage.setItem("dashboard-page-size", newState.pageSize.toString());
-        }
-        
-        return newState;
-      });
+      if (!serverPagination) return;
+      
+      const current = {
+        pageIndex: serverPagination.page - 1,
+        pageSize: serverPagination.pageSize,
+      };
+      
+      const newState = typeof updater === "function" ? updater(current) : updater;
+      
+      // Update pageSize in localStorage
+      if (newState.pageSize !== pageSize) {
+        setPageSize(newState.pageSize);
+      }
+      
+      // Trigger server update
+      serverPagination.onPaginationChange(
+        newState.pageIndex + 1,
+        newState.pageSize
+      );
     },
     state: {
       sorting,
       columnFilters,
       columnVisibility,
-      pagination,
+      pagination: serverPagination
+        ? {
+            pageIndex: serverPagination.page - 1,
+            pageSize: serverPagination.pageSize,
+          }
+        : {
+            pageIndex: 0,
+            pageSize,
+          },
     },
   });
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <DataTableViewOptions table={table} />
-      </div>
+      {renderControls && renderControls(table)}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -145,7 +167,7 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} />
+      <DataTablePagination table={table} serverPagination={serverPagination} />
     </div>
   );
 }

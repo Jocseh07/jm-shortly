@@ -33,11 +33,55 @@ import {
   MoreHorizontal,
   Power,
   CheckCircle2,
-  ArrowUpDown,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { useState } from "react";
+import { DataTableColumnHeader } from "./data-table-column-header";
+import { LoadingSwap } from "@/components/ui/loading-swap";
+
+function StatusCell({
+  row,
+  onToggleStatus,
+}: {
+  row: { original: LinkType };
+  onToggleStatus: (linkId: string) => Promise<void>;
+}) {
+  const isActive = row.original.isActive;
+  const [isToggling, setIsToggling] = useState(false);
+  return (
+    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <Badge variant={isActive ? "default" : "destructive"}>
+        {isActive ? "Active" : "Inactive"}
+      </Badge>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={isToggling}
+            onClick={async () => {
+              setIsToggling(true);
+              try {
+                await onToggleStatus(row.original.id);
+              } finally {
+                setIsToggling(false);
+              }
+            }}
+            className="h-7 w-7 p-0"
+          >
+            <LoadingSwap isLoading={isToggling} className="h-4 w-4">
+              <Power className="h-4 w-4" />
+            </LoadingSwap>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {isActive ? "Deactivate" : "Activate"} link
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
 
 function ActionsCell({
   row,
@@ -55,7 +99,7 @@ function ActionsCell({
 
   return (
     <>
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -74,17 +118,6 @@ function ActionsCell({
           <TooltipContent>Copy short URL</TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button size="sm" variant="ghost" asChild className="h-8 w-8 p-0">
-              <Link href={`/dashboard/${link.id}`}>
-                <BarChart3 className="h-4 w-4" />
-              </Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>View analytics</TooltipContent>
-        </Tooltip>
-
         <DropdownMenu>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -97,6 +130,12 @@ function ActionsCell({
             <TooltipContent>More actions</TooltipContent>
           </Tooltip>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/${link.id}`} className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                View analytics
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <a
                 href={`/${link.shortCode}`}
@@ -172,111 +211,51 @@ export const createColumns = ({
 }: ColumnsConfig): ColumnDef<LinkType>[] => [
   {
     accessorKey: "shortCode",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="px-0 hover:bg-transparent"
-        >
-          Short Code
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Short Code" />
+    ),
     cell: ({ row }) => (
-      <span className="font-mono font-medium">{row.getValue("shortCode")}</span>
+      <span className="font-mono font-medium">{row.original.shortCode}</span>
     ),
   },
   {
     accessorKey: "originalUrl",
-    header: "Original URL",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Original URL" />
+    ),
     cell: ({ row }) => (
       <span
         className="max-w-xs truncate block"
-        title={row.getValue("originalUrl")}
+        title={row.original.originalUrl}
       >
-        {row.getValue("originalUrl")}
+        {row.original.originalUrl}
       </span>
     ),
   },
   {
     accessorKey: "clicks",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="px-0 hover:bg-transparent"
-        >
-          Clicks
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Clicks" />
+    ),
     cell: ({ row }) => (
-      <Badge variant="secondary">
-        {(row.getValue("clicks") as number).toLocaleString()}
-      </Badge>
+      <Badge variant="secondary">{row.original.clicks.toLocaleString()}</Badge>
     ),
   },
   {
     id: "status",
     accessorKey: "isActive",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="px-0 hover:bg-transparent"
-        >
-          Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
-    cell: ({ row }) => {
-      const isActive = row.getValue("status") as boolean;
-      return (
-        <div className="flex items-center gap-2">
-          <Badge variant={isActive ? "default" : "destructive"}>
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onToggleStatus(row.original.id)}
-                className="h-7 w-7 p-0"
-              >
-                <Power className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {isActive ? "Deactivate" : "Activate"} link
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      );
-    },
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => <StatusCell row={row} onToggleStatus={onToggleStatus} />,
   },
   {
     accessorKey: "createdAt",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="px-0 hover:bg-transparent"
-        >
-          Created
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Created" />
+    ),
     cell: ({ row }) => {
-      const date = row.getValue("createdAt") as Date | null;
+      const date = row.original.createdAt;
       return date
         ? formatDistanceToNow(new Date(date), { addSuffix: true })
         : "Unknown";
@@ -286,7 +265,14 @@ export const createColumns = ({
     id: "actions",
     header: () => <div className="text-right">Actions</div>,
     cell: ({ row }) => {
-      return <ActionsCell row={row} onCopy={onCopy} onDelete={onDelete} copied={copied} />;
+      return (
+        <ActionsCell
+          row={row}
+          onCopy={onCopy}
+          onDelete={onDelete}
+          copied={copied}
+        />
+      );
     },
   },
 ];

@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Link2 } from "lucide-react";
 import { useTransition, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DataTable } from "./data-table";
 import { createColumns, LinkType } from "./columns";
 
 export function LinkTable({ links }: { links: LinkType[] }) {
   const [, startTransition] = useTransition();
   const [copied, setCopied] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleDelete = async (linkId: string) => {
     startTransition(async () => {
@@ -21,13 +23,15 @@ export function LinkTable({ links }: { links: LinkType[] }) {
     });
   };
 
-  const handleToggleStatus = async (linkId: string) => {
+  const handleToggleStatus = (linkId: string): Promise<void> => {
+    const operation = toggleLinkStatus(linkId);
     startTransition(async () => {
-      const result = await toggleLinkStatus(linkId);
+      const result = await operation;
       if (!result.success) {
         alert(result.error || "Failed to update link status");
       }
     });
+    return operation.then(() => undefined);
   };
 
   const handleCopy = async (shortCode: string) => {
@@ -56,6 +60,10 @@ export function LinkTable({ links }: { links: LinkType[] }) {
     );
   }
 
+  const handleRowClick = (link: LinkType) => {
+    router.push(`/dashboard/${link.id}`);
+  };
+
   const columns = createColumns({
     onToggleStatus: handleToggleStatus,
     onDelete: handleDelete,
@@ -63,5 +71,5 @@ export function LinkTable({ links }: { links: LinkType[] }) {
     copied,
   });
 
-  return <DataTable columns={columns} data={links} />;
+  return <DataTable columns={columns} data={links} onRowClick={handleRowClick} />;
 }

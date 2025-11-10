@@ -33,6 +33,7 @@ import {
   MoreHorizontal,
   Power,
   CheckCircle2,
+  Pencil,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -87,11 +88,13 @@ function ActionsCell({
   row,
   onCopy,
   onDelete,
+  onEdit,
   copied,
 }: {
   row: { original: LinkType };
   onCopy: (shortCode: string) => Promise<void>;
   onDelete: (linkId: string) => Promise<void>;
+  onEdit: (link: LinkType) => void;
   copied: string | null;
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -147,6 +150,13 @@ function ActionsCell({
                 Open link
               </a>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onEdit(link)}
+              className="flex items-center gap-2"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit link
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => setShowDeleteDialog(true)}
@@ -194,11 +204,13 @@ export type LinkType = {
   clicks: number;
   isActive: boolean;
   createdAt: Date | null;
+  expiresAt: Date | null;
 };
 
 interface ColumnsConfig {
   onToggleStatus: (linkId: string) => Promise<void>;
   onDelete: (linkId: string) => Promise<void>;
+  onEdit: (link: LinkType) => void;
   onCopy: (shortCode: string) => Promise<void>;
   copied: string | null;
 }
@@ -206,6 +218,7 @@ interface ColumnsConfig {
 export const createColumns = ({
   onToggleStatus,
   onDelete,
+  onEdit,
   onCopy,
   copied,
 }: ColumnsConfig): ColumnDef<LinkType>[] => [
@@ -270,6 +283,7 @@ export const createColumns = ({
           row={row}
           onCopy={onCopy}
           onDelete={onDelete}
+          onEdit={onEdit}
           copied={copied}
         />
       );

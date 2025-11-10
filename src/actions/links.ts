@@ -5,7 +5,7 @@ import { links } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getThrowUser } from "./getThrowUser";
-import { createLinkSchema, linkIdSchema, aliasSchema } from "@/lib/validations";
+import { createLinkSchema, linkIdSchema, aliasSchema, updateLinkSchema } from "@/lib/validations";
 import { getBaseUrl } from "@/lib/url";
 
 function generateShortCode(): string {
@@ -229,5 +229,62 @@ export async function checkAliasAvailability(
   } catch (error) {
     console.error("Error checking alias availability:", error);
     return { available: false, error: "Failed to check availability" };
+  }
+}
+
+export async function updateLink(
+  linkId: string,
+  data: { originalUrl: string; expiryDuration: string }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await getThrowUser();
+
+    const linkValidation = linkIdSchema.safeParse(linkId);
+    if (!linkValidation.success) {
+      return { success: false, error: "Invalid link ID" };
+    }
+
+    const validationResult = updateLinkSchema.safeParse(data);
+    if (!validationResult.success) {
+      return {
+        success: false,
+        error: validationResult.error.issues[0]?.message || "Invalid data",
+      };
+    }
+
+    const { originalUrl, expiryDuration } = validationResult.data;
+
+    const link = await db.query.links.findFirst({
+      where: eq(links.id, linkId),
+    });
+
+    if (!link) {
+      return { success: false, error: "Link not found" };
+    }
+
+    if (link.userId !== userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const expiresAt = calculateExpiresAt(expiryDuration);
+
+    await db
+      .update(links)
+      .set({
+        originalUrl,
+        expiresAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(links.id, linkId));
+
+    revalidatePath("/dashboard");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating link:", error);
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return { success: false, error: "You must be signed in" };
+    }
+    return { success: false, error: "Failed to update link" };
   }
 }

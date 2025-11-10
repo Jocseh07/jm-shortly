@@ -8,10 +8,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DataTable } from "./data-table";
 import { createColumns, LinkType } from "./columns";
+import { EditLinkDialog } from "./edit-link-dialog";
 
 export function LinkTable({ links }: { links: LinkType[] }) {
   const [, startTransition] = useTransition();
   const [copied, setCopied] = useState<string | null>(null);
+  const [editingLink, setEditingLink] = useState<LinkType | null>(null);
   const router = useRouter();
 
   const handleDelete = async (linkId: string) => {
@@ -64,12 +66,28 @@ export function LinkTable({ links }: { links: LinkType[] }) {
     router.push(`/dashboard/${link.id}`);
   };
 
+  const handleEdit = (link: LinkType) => {
+    setEditingLink(link);
+  };
+
   const columns = createColumns({
     onToggleStatus: handleToggleStatus,
     onDelete: handleDelete,
+    onEdit: handleEdit,
     onCopy: handleCopy,
     copied,
   });
 
-  return <DataTable columns={columns} data={links} onRowClick={handleRowClick} />;
+  return (
+    <>
+      <DataTable columns={columns} data={links} onRowClick={handleRowClick} />
+      {editingLink && (
+        <EditLinkDialog
+          link={editingLink}
+          open={!!editingLink}
+          onOpenChange={(open) => !open && setEditingLink(null)}
+        />
+      )}
+    </>
+  );
 }

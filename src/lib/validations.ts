@@ -27,3 +27,10 @@ export const aliasSchema = z
     /^[a-zA-Z0-9_-]+$/,
     "Alias can only contain letters, numbers, hyphens, and underscores"
   );
+
+export const updateLinkSchema = z.object({
+  originalUrl: z.url("Please enter a valid URL"),
+  expiryDuration: z
+    .enum(["1h", "24h", "7d", "30d", "never"])
+    .catch("never"),
+});

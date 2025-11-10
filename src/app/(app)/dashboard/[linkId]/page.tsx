@@ -6,6 +6,7 @@ import { DeviceBreakdown } from "../_components/device-breakdown";
 import { RecentClicks } from "../_components/recent-clicks";
 import { CopyButton } from "../_components/copy-button";
 import { ExportButton } from "../_components/export-button";
+import { QrCodeButton } from "../_components/qr-code-button";
 import { LinkStatusToggle } from "./_components/link-status-toggle";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ExternalLink } from "lucide-react";
@@ -43,8 +44,8 @@ export default async function AnalyticsPage({
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
+      <header className="flex flex-col lg:flex-row items-start lg:justify-between gap-4">
+        <div className="flex items-start gap-3 flex-1 min-w-0 w-full lg:w-auto">
           <Button variant="outline" size="icon" asChild className="shrink-0 mt-1">
             <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4" />
@@ -72,7 +73,7 @@ export default async function AnalyticsPage({
           </div>
         </div>
 
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto lg:shrink-0">
           <CopyButton shortUrl={shortUrl} />
           <Button variant="outline" size="sm" asChild>
             <a href={shortUrl} target="_blank" rel="noopener noreferrer">
@@ -81,6 +82,7 @@ export default async function AnalyticsPage({
             </a>
           </Button>
           <ExportButton linkId={analytics.link.id} shortCode={analytics.link.shortCode} />
+          <QrCodeButton shortUrl={shortUrl} shortCode={analytics.link.shortCode} />
         </div>
       </header>
 

@@ -33,7 +33,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </p>
         </div>
         <Button asChild>
-          <Link href="/">
+          <Link href="/new">
             <Plus className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Create Link</span>
           </Link>
